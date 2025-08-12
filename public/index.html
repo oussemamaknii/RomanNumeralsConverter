@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -12,23 +13,19 @@
             padding: 20px;
             background-color: #f5f5f5;
         }
-        <div class="step-indicator" style="margin-top:24px">SSE Conversion (demo)</div>
-        <div class="form-group">
-          <button type="button" id="sseBtn">Convert over SSE</button>
-        </div>
-        <div id="sseResult" class="result" role="status" aria-live="polite"></div>
+
         .container {
             background: white;
             padding: 30px;
             border-radius: 8px;
-            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
         }
-        
+
         h1 {
             color: #333;
             text-align: center;
         }
-        
+
         .step-indicator {
             background: #e3f2fd;
             border: 1px solid #2196f3;
@@ -39,17 +36,17 @@
             color: #1976d2;
             font-weight: bold;
         }
-        
+
         .form-group {
             margin-bottom: 20px;
         }
-        
+
         label {
             display: block;
             margin-bottom: 5px;
             font-weight: bold;
         }
-        
+
         input[type="number"] {
             width: 100%;
             padding: 10px;
@@ -58,12 +55,12 @@
             font-size: 16px;
             box-sizing: border-box;
         }
-        
+
         input[type="number"]:focus {
             border-color: #4CAF50;
             outline: none;
         }
-        
+
         button {
             background-color: #4CAF50;
             color: white;
@@ -74,29 +71,29 @@
             font-size: 16px;
             width: 100%;
         }
-        
+
         button:hover {
             background-color: #45a049;
         }
-        
+
         button:disabled {
             background-color: #cccccc;
             cursor: not-allowed;
         }
-        
+
         .result {
             margin-top: 20px;
             padding: 15px;
             border-radius: 4px;
             min-height: 20px;
         }
-        
+
         .result.success {
             background-color: #d4edda;
             border: 1px solid #c3e6cb;
             color: #155724;
         }
-        
+
         .result.error {
             background-color: #f8d7da;
             border: 1px solid #f5c6cb;
@@ -108,21 +105,25 @@
 <body>
     <div class="container">
         <h1>Roman Numerals Converter</h1>
-        
+
         <div class="step-indicator">AJAX Conversion</div>
-        
+
         <form id="converterForm" novalidate>
             <div class="form-group">
                 <label for="numberInput">Enter a number (1-100):</label>
                 <input type="number" id="numberInput" name="number" min="1" max="100" required>
             </div>
-            
+
             <button type="submit" id="convertBtn">Convert to Roman</button>
         </form>
-        
+
         <div id="result" class="result" role="status" aria-live="polite"></div>
 
-        
+        <div class="step-indicator" style="margin-top:24px">SSE Conversion (demo)</div>
+        <div class="form-group">
+          <button type="button" id="sseBtn">Convert over SSE</button>
+        </div>
+        <div id="sseResult" class="result" role="status" aria-live="polite"></div>
     </div>
 
     <script>
@@ -135,18 +136,18 @@
 
         form.addEventListener('submit', async (e) => {
             e.preventDefault();
-            
+
             const number = parseInt(numberInput.value);
-            
+
             // Validation
             if (isNaN(number) || number < 1 || number > 100) {
                 showResult('Please enter a valid number between 1 and 100', 'error');
                 return;
             }
-            
+
             convertBtn.disabled = true;
             showResult('Converting...', '');
-            
+
             try {
                 await convertWithAjax(number);
             } catch (error) {
@@ -210,7 +211,7 @@
             }
 
             const cleanup = () => {
-                try { eventSource && eventSource.close(); } catch (_) {}
+                try { eventSource && eventSource.close(); } catch (_) { }
             };
 
             eventSource.onmessage = (ev) => {
@@ -243,4 +244,5 @@
         }
     </script>
 </body>
+
 </html>
