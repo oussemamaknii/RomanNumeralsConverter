@@ -3,3 +3,5 @@ package-lock.json
 dist/
 coverage/
 .DS_Store
+# Ignore stray JS tests
+/tests/*.test.js
