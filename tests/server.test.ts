@@ -44,4 +44,19 @@ describe("REST /api/convert", () => {
 // Basic SSE integration test: we simulate by hitting the endpoint and reading response text
 // Supertest does not natively parse event-stream, so we assert response contains our JSON payload
 
-// SSE tests removed: focusing on AJAX converter only for now.
+describe("SSE /api/convert-sse/:number", () => {
+  const app = createApp();
+
+  it("returns one event then closes", async () => {
+    const res = await request(app).get("/api/convert-sse/9");
+    expect(res.status).toBe(200);
+    expect(res.header["content-type"]).toContain("text/event-stream");
+    expect(res.text).toContain("{\"number\":9,\"roman\":\"IX\"}");
+  }, 10000);
+
+  it("returns error for invalid input", async () => {
+    const res = await request(app).get("/api/convert-sse/abc");
+    expect(res.status).toBe(200);
+    expect(res.text).toContain("error");
+  }, 10000);
+});
