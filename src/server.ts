@@ -4,8 +4,9 @@ import path from "path";
 import { convertToRoman } from "./roman";
 
 /**
- * Express server exposing REST endpoints for Roman numerals conversion.
+ * Express server exposing REST and SSE endpoints for Roman numerals conversion.
  * - POST /api/convert: JSON body { number: number }
+ * - GET /api/convert-sse/:number: Streams a single conversion result then closes
  */
 export function createApp() {
   const app = express();
@@ -49,7 +50,58 @@ export function createApp() {
     }
   });
 
-  // NOTE: SSE support intentionally omitted for now; focusing on AJAX converter only.
+  // SSE endpoint for streaming a single conversion result
+  app.get("/api/convert-sse/:number", async (req: Request, res: Response) => {
+    res.setHeader("Content-Type", "text/event-stream");
+    res.setHeader("Cache-Control", "no-cache");
+    res.setHeader("Connection", "keep-alive");
+    res.setHeader("Access-Control-Allow-Origin", "*");
+
+    const heartbeat = setInterval(() => {
+      try {
+        res.write(":\n\n");
+      } catch {
+        // ignore
+      }
+    }, 15000);
+
+    const onClose = () => {
+      clearInterval(heartbeat);
+      try {
+        res.end();
+      } catch {
+        // ignore
+      }
+    };
+    req.on("close", onClose);
+
+    try {
+      const raw = req.params.number;
+      const parsed = Number(raw);
+      if (!Number.isFinite(parsed) || !Number.isInteger(parsed)) {
+        res.write(`data: ${JSON.stringify({ error: "Invalid number provided" })}\n\n`);
+        return onClose();
+      }
+
+      try {
+        await new Promise((resolve) => setTimeout(resolve, 300));
+        const roman = convertToRoman(parsed);
+        res.write(`data: ${JSON.stringify({ number: parsed, roman })}\n\n`);
+        return onClose();
+      } catch (err) {
+        const message = err instanceof Error ? err.message : "Conversion failed";
+        res.write(`data: ${JSON.stringify({ error: message })}\n\n`);
+        return onClose();
+      }
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "Internal server error";
+      try {
+        res.write(`data: ${JSON.stringify({ error: message })}\n\n`);
+      } finally {
+        return onClose();
+      }
+    }
+  });
 
   // Serve HTML
   app.get("/", (_req: Request, res: Response) => {

@@ -12,7 +12,11 @@
             padding: 20px;
             background-color: #f5f5f5;
         }
-        
+        <div class="step-indicator" style="margin-top:24px">SSE Conversion (demo)</div>
+        <div class="form-group">
+          <button type="button" id="sseBtn">Convert over SSE</button>
+        </div>
+        <div id="sseResult" class="result" role="status" aria-live="polite"></div>
         .container {
             background: white;
             padding: 30px;
@@ -126,6 +130,8 @@
         const numberInput = document.getElementById('numberInput');
         const convertBtn = document.getElementById('convertBtn');
         const resultDiv = document.getElementById('result');
+        const sseBtn = document.getElementById('sseBtn');
+        const sseResultDiv = document.getElementById('sseResult');
 
         form.addEventListener('submit', async (e) => {
             e.preventDefault();
@@ -182,7 +188,54 @@
             }
         }
 
-        
+        sseBtn.addEventListener('click', async () => {
+            const number = parseInt(numberInput.value);
+            sseResultDiv.textContent = 'Connecting...';
+            sseResultDiv.className = 'result';
+
+            if (isNaN(number) || number < 1 || number > 100) {
+                sseResultDiv.textContent = 'Please enter a valid number between 1 and 100';
+                sseResultDiv.className = 'result error';
+                return;
+            }
+
+            const url = `/api/convert-sse/${encodeURIComponent(number)}`;
+            let eventSource;
+            try {
+                eventSource = new EventSource(url);
+            } catch (e) {
+                sseResultDiv.textContent = 'Failed to start SSE';
+                sseResultDiv.className = 'result error';
+                return;
+            }
+
+            const cleanup = () => {
+                try { eventSource && eventSource.close(); } catch (_) {}
+            };
+
+            eventSource.onmessage = (ev) => {
+                try {
+                    const data = JSON.parse(ev.data);
+                    if (data.error) {
+                        sseResultDiv.textContent = `Error: ${data.error}`;
+                        sseResultDiv.className = 'result error';
+                    } else {
+                        sseResultDiv.textContent = `${data.number} = ${data.roman}`;
+                        sseResultDiv.className = 'result success';
+                    }
+                } catch (_) {
+                    sseResultDiv.textContent = 'Malformed SSE message';
+                    sseResultDiv.className = 'result error';
+                } finally {
+                    cleanup();
+                }
+            };
+            eventSource.onerror = () => {
+                sseResultDiv.textContent = 'SSE connection error';
+                sseResultDiv.className = 'result error';
+                cleanup();
+            };
+        });
 
         function showResult(message, type) {
             resultDiv.textContent = message;
