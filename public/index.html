@@ -189,54 +189,75 @@
             }
         }
 
-        sseBtn.addEventListener('click', async () => {
-            const number = parseInt(numberInput.value);
-            sseResultDiv.textContent = 'Connecting...';
-            sseResultDiv.className = 'result';
+        (function() {
+            const MAX_SSE_RETRIES = 3;
+            const RETRY_DELAY_BASE_MS = 500;
+            let currentEventSource = null;
 
-            if (isNaN(number) || number < 1 || number > 100) {
-                sseResultDiv.textContent = 'Please enter a valid number between 1 and 100';
-                sseResultDiv.className = 'result error';
-                return;
+            function cleanup() {
+                try { currentEventSource && currentEventSource.close(); } catch (_) {}
+                currentEventSource = null;
             }
 
-            const url = `/api/convert-sse/${encodeURIComponent(number)}`;
-            let eventSource;
-            try {
-                eventSource = new EventSource(url);
-            } catch (e) {
-                sseResultDiv.textContent = 'Failed to start SSE';
-                sseResultDiv.className = 'result error';
-                return;
-            }
+            function openSSE(number, attempt = 1) {
+                const url = `/api/convert-sse/${encodeURIComponent(number)}`;
+                sseResultDiv.textContent = attempt === 1 ? 'Connecting...' : `Reconnecting (attempt ${attempt}/${MAX_SSE_RETRIES})...`;
+                sseResultDiv.className = 'result';
 
-            const cleanup = () => {
-                try { eventSource && eventSource.close(); } catch (_) { }
-            };
-
-            eventSource.onmessage = (ev) => {
                 try {
-                    const data = JSON.parse(ev.data);
-                    if (data.error) {
-                        sseResultDiv.textContent = `Error: ${data.error}`;
-                        sseResultDiv.className = 'result error';
-                    } else {
-                        sseResultDiv.textContent = `${data.number} = ${data.roman}`;
-                        sseResultDiv.className = 'result success';
-                    }
-                } catch (_) {
-                    sseResultDiv.textContent = 'Malformed SSE message';
-                    sseResultDiv.className = 'result error';
-                } finally {
                     cleanup();
+                    currentEventSource = new EventSource(url);
+                } catch (e) {
+                    if (attempt >= MAX_SSE_RETRIES) {
+                        sseResultDiv.textContent = 'Failed to start SSE';
+                        sseResultDiv.className = 'result error';
+                        return;
+                    }
+                    return setTimeout(() => openSSE(number, attempt + 1), RETRY_DELAY_BASE_MS * (2 ** (attempt - 1)));
                 }
-            };
-            eventSource.onerror = () => {
-                sseResultDiv.textContent = 'SSE connection error';
-                sseResultDiv.className = 'result error';
-                cleanup();
-            };
-        });
+
+                currentEventSource.onmessage = (ev) => {
+                    try {
+                        const data = JSON.parse(ev.data);
+                        if (data.error) {
+                            sseResultDiv.textContent = `Error: ${data.error}`;
+                            sseResultDiv.className = 'result error';
+                        } else {
+                            sseResultDiv.textContent = `${data.number} = ${data.roman}`;
+                            sseResultDiv.className = 'result success';
+                        }
+                    } catch (_) {
+                        sseResultDiv.textContent = 'Malformed SSE message';
+                        sseResultDiv.className = 'result error';
+                    } finally {
+                        cleanup();
+                    }
+                };
+
+                currentEventSource.onerror = () => {
+                    cleanup();
+                    if (attempt < MAX_SSE_RETRIES) {
+                        const delay = RETRY_DELAY_BASE_MS * (2 ** (attempt - 1));
+                        setTimeout(() => openSSE(number, attempt + 1), delay);
+                    } else {
+                        sseResultDiv.textContent = 'SSE connection error (max retries reached)';
+                        sseResultDiv.className = 'result error';
+                    }
+                };
+            }
+
+            sseBtn.addEventListener('click', () => {
+                const number = parseInt(numberInput.value);
+                if (isNaN(number) || number < 1 || number > 100) {
+                    sseResultDiv.textContent = 'Please enter a valid number between 1 and 100';
+                    sseResultDiv.className = 'result error';
+                    return;
+                }
+                openSSE(number);
+            });
+
+            window.addEventListener('beforeunload', cleanup);
+        })();
 
         function showResult(message, type) {
             resultDiv.textContent = message;

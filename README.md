@@ -48,6 +48,7 @@ data: {"number":9,"roman":"IX"}
 
   ```
 - Emits `{ "error": string }` payload for invalid input; includes heartbeat and disconnect handling.
+ - Client includes retry with exponential backoff (max 3 retries) on connection errors.
 
 ## Frontend
 - Served from `public/index.html`.
@@ -94,7 +95,7 @@ git switch sse-converter
 - `PORT` env var overrides default 3000.
 
 ## Notes & constraints
-- Supported input: integers 1–100 only.
+- Supported input: integers 1–100 only. Input `0` is explicitly rejected (there is no standard Roman numeral for zero).
 - Server never crashes on invalid input; returns 400 with a clear message.
 - Client-side handles network timeouts and malformed responses.
 
